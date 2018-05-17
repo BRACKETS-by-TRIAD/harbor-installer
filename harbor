@@ -2,18 +2,32 @@
 if [ $# -eq 0 ]; then
     if [ -f harbor ]; then
         ./harbor
+    elif [ -f harbor-ionic ]; then
+        ./harbor-ionic
     elif [ ! -f harbor ]; then
         echo "Please use harbor add to add harbor to this folder."
         exit 1
     fi
 elif [ "$1" == "add" ]; then
-	git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" master
-	unzip -a -u -q harbor.zip -x ".gitignore"
-	rm -rf harbor.zip
+    if [ -z "$2" ]; then
+    	git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" master
+    	unzip -a -u -q harbor.zip -x ".gitignore"
+    	rm -rf harbor.zip
+    elif [ "$2" == "ionic" ]; then
+        git archive --remote=ssh://git@bitbucket.org:TRIAD-Advertising/harbor-ionic.git --format=zip --output="harbor-ionic.zip" master
+        unzip -a -u -q harbor-ionic.zip -x ".gitignore"
+        rm -rf harbor-ionic.zip
+    fi
 elif [ "$1" == "update" ]; then
-	git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" master
-	unzip -a -u -q harbor.zip -x ".gitignore" 
-	rm -rf harbor.zip
+    if [ -z "$2" ]; then
+        git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" master
+        unzip -a -u -q harbor.zip -x ".gitignore"
+        rm -rf harbor.zip
+    elif [ "$2" == "ionic" ]; then
+        git archive --remote=ssh://git@bitbucket.org:TRIAD-Advertising/harbor-ionic.git --format=zip --output="harbor-ionic.zip" master
+        unzip -a -u -q harbor-ionic.zip -x ".gitignore"
+        rm -rf harbor-ionic.zip
+    fi
 else
     ./harbor "$@"
 fi
