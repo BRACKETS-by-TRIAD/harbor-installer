@@ -1,6 +1,6 @@
-# Harbor Global #
+# Harbor Installer #
 
-Harbor global is a command to add or update harbor in your project.
+Harbor installer is a command to add or update harbor in your project.
 
 ## Install to your system ##
 
@@ -8,7 +8,7 @@ Harbor global is a command to add or update harbor in your project.
 
 Create harbor as global command
 
-`ln -s /path/to/this/harbor-global/harbor /usr/local/bin/harbor`
+`ln -s /path/to/this/harbor-installer/harbor /usr/local/bin/harbor`
 
 If the command does not work, try to use sudo. Then you can call `harbor` from everywhere.
 
