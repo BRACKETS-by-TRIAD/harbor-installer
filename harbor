@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 if [ $# -eq 0 ]; then
     if [ -f harbor ]; then
+        echo "Calling local harbor"
         ./harbor
     elif [ -f harbor-ionic ]; then
+        echo "Calling local harbor ionic"
         ./harbor-ionic
     elif [ ! -f harbor ]; then
         echo "Please use harbor add to add harbor to this folder."
@@ -10,24 +12,34 @@ if [ $# -eq 0 ]; then
     fi
 elif [ "$1" == "add" ]; then
     if [ -z "$2" ]; then
+        echo "Downloading harbor ..."
     	git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" master
+    	echo "Unzipping harbor ..."
     	unzip -a -u -q harbor.zip -x ".gitignore"
     	rm -rf harbor.zip
     elif [ "$2" == "ionic" ]; then
+        echo "Downloading harbor ionic..."
         git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor-ionic.git --format=zip --output="harbor-ionic.zip" master
+        echo "Unzipping harbor ionic ..."
         unzip -a -u -q harbor-ionic.zip -x ".gitignore"
         rm -rf harbor-ionic.zip
     fi
 elif [ "$1" == "update" ]; then
     if [ -z "$2" ]; then
+        echo "Downloading harbor ..."
         git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" master
+        echo "Unzipping harbor ..."
         unzip -a -u -q harbor.zip -x ".gitignore"
+        echo "Removing harbor ..."
         rm -rf harbor.zip
     elif [ "$2" == "ionic" ]; then
+        echo "Downloading harbor ionic..."
         git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor-ionic.git --format=zip --output="harbor-ionic.zip" master
+        echo "Unzipping harbor ionic ..."
         unzip -a -u -q harbor-ionic.zip -x ".gitignore"
         rm -rf harbor-ionic.zip
     fi
 else
+    echo "Calling local harbor with parameters"
     ./harbor "$@"
 fi
