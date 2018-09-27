@@ -6,7 +6,9 @@ Harbor installer is a command to add or update harbor in your project.
 
 ### Mac/Linux ###
 
-Create harbor as global command
+First clone this repo to your computer.
+
+Create harbor as global command (please change /path/to/this/harbor-installer to your path where you have cloned this repo)
 
 `ln -s /path/to/this/harbor-installer/harbor /usr/local/bin/harbor`
 
