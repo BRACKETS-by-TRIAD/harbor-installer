@@ -26,19 +26,19 @@ function install {
     #install
     case "$1" in
         php)
-            echo "Downloading harbor ionic..."
-            git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor-ionic.git --format=zip --output="harbor-ionic.zip" $BRANCH
-            echo "Unzipping harbor ionic ..."
-            unzip -a -u -q harbor-ionic.zip -x ".gitignore"
-            rm -rf harbor-ionic.zip
-            ;;
-
-        ionic)
             echo "Downloading harbor ..."
             git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" $BRANCH
             echo "Unzipping harbor ..."
             unzip -a -u -q harbor.zip -x ".gitignore"
             rm -rf harbor.zip
+            ;;
+
+        ionic)
+            echo "Downloading harbor ionic..."
+            git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor-ionic.git --format=zip --output="harbor-ionic.zip" $BRANCH
+            echo "Unzipping harbor ionic ..."
+            unzip -a -u -q harbor-ionic.zip -x ".gitignore"
+            rm -rf harbor-ionic.zip
             ;;
 
         *)
@@ -81,31 +81,39 @@ function callLocal {
 }
 
 function new {
+    getBranch "$@"
+
     # create dir
-    if [ -z "$2" ] then
+    if [ -z "$2" ]; then
         echo "No directory name provided"
         exit 1
     fi
+
     mkdir -p $2
     cd $2
 
     case "$1" in
         craftable)
-            install php
+            install php -b=$BRANCH
             ./harbor new craftable
             ;;
 
         laravel)
-            install php
+            install php -b=$BRANCH
             ./harbor new laravel
             ;;
 
         ionic)
-            install ionic
+            install ionic -b=$BRANCH
+            ./harbor-ionic new ionic
+            ;;
+
+        empty)
+            install php -b=$BRANCH
             ;;
 
         *)
-            install php
+            install php -b=$BRANCH
             ;;
     esac
 }
