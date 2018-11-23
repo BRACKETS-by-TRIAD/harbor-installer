@@ -94,18 +94,45 @@ function update {
     getBranch "$@"
 
     if [ -f harbor ]; then
-        echo "Downloading harbor ..."
-        git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" $BRANCH
-        echo "Unzipping harbor ..."
-        unzip -a -u -q harbor.zip -x ".gitignore"
-        echo "Removing harbor ..."
-        rm -rf harbor.zip
+        echo -n "Are you sure you want to update harbor, all customization in harbor files will be deleted (y/n)? "
+        old_stty_cfg=$(stty -g)
+        stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Careful playing with stty
+        if echo "$answer" | grep -iq "^y" ;then
+            echo "Downloading harbor ..."
+            git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" $BRANCH
+
+            echo "Removing old harbor ..."
+            mkdir -P harbor
+            mv docker docker-compose harbor harbor-readme.md harbor/
+
+            echo "Unzipping harbor ..."
+            unzip -a -u -q harbor.zip -x ".gitignore"
+            cp ./harbor/docker/php/ssh/* ./docker/php/ssh/
+
+            echo "Clean up ..."
+            rm -rf harbor.zip
+        else
+            echo "Aborted"
+        fi
+
     elif [ -f harbor-ionic ]; then
-        echo "Downloading harbor ionic..."
-        git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor-ionic.git --format=zip --output="harbor-ionic.zip" $BRANCH
-        echo "Unzipping harbor ionic ..."
-        unzip -a -u -q harbor-ionic.zip -x ".gitignore"
-        rm -rf harbor-ionic.zip
+        echo -n "Are you sure you want to update harbor, all customization in harbor files will be deleted (y/n)? "
+        old_stty_cfg=$(stty -g)
+        stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Careful playing with stty
+        if echo "$answer" | grep -iq "^y" ;then
+            echo "Downloading harbor ionic..."
+            git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor-ionic.git --format=zip --output="harbor-ionic.zip" $BRANCH
+
+            echo "Removing old harbor ..."
+
+            echo "Unzipping harbor ionic ..."
+            unzip -a -u -q harbor-ionic.zip -x ".gitignore"
+
+            echo "Clean up ..."
+            rm -rf harbor-ionic.zip
+        else
+            echo "Aborted"
+        fi
     else
         missingHarbor
     fi
