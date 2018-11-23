@@ -20,11 +20,54 @@ function getBranch {
     done
 }
 
+function getArgsForNew {
+    num=1
+    for i in "$@"
+    do
+        case $i in
+            -b=*|--branch=)
+                BRANCH="${i#*=}"
+                ;;
+
+            *)
+                if [ $num = 1 ]; then
+                    TYPE=$i
+                    num=$((num + 1))
+
+                elif [ $num = 2 ]; then
+                    DIR=$i
+                    num=$((num + 1))
+
+                fi
+                ;;
+        esac
+    done
+}
+
+function getArgsForInstall {
+    num=1
+    for i in "$@"
+    do
+        case $i in
+            -b=*|--branch=)
+                BRANCH="${i#*=}"
+                ;;
+
+            *)
+                if [ $num = 1 ]; then
+                    TYPE=$i
+                    num=$((num + 1))
+                fi
+                ;;
+        esac
+    done
+}
+
 function install {
-    getBranch "$@"
+    getArgsForInstall "$@"
 
     #install
-    case "$1" in
+    case "$TYPE" in
         php)
             echo "Downloading harbor ..."
             git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" $BRANCH
@@ -42,7 +85,7 @@ function install {
             ;;
 
         *)
-            echo $"Usage: $0 $1 {php|ionic}"
+            echo $"Usage: $0 install {php|ionic}"
             exit 1
     esac
 }
@@ -81,18 +124,18 @@ function callLocal {
 }
 
 function new {
-    getBranch "$@"
+    getArgsForNew "$@"
 
     # create dir
-    if [ -z "$2" ]; then
+    if [ -z "$DIR" ]; then
         echo "No directory name provided"
         exit 1
     fi
 
-    mkdir -p $2
-    cd $2
+    mkdir -p $DIR
+    cd $DIR
 
-    case "$1" in
+    case "$TYPE" in
         craftable)
             install php -b=$BRANCH
             ./harbor new craftable
@@ -127,7 +170,8 @@ case "$1" in
 
     update)
         # update current harbor in current directory
-        update
+        shift 1
+        update "$@"
         ;;
 
     new)
