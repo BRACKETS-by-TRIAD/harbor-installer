@@ -21,6 +21,7 @@ function getBranch {
 }
 
 function getArgsForNew {
+    BRANCH="master"
     num=1
     for i in "$@"
     do
@@ -45,6 +46,7 @@ function getArgsForNew {
 }
 
 function getArgsForInstall {
+    BRANCH="master"
     num=1
     for i in "$@"
     do
@@ -102,15 +104,16 @@ function update {
             git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" $BRANCH
 
             echo "Removing old harbor ..."
-            mkdir -P harbor
-            mv docker docker-compose harbor harbor-readme.md harbor/
+            mkdir -p ./harbor-backup/
+            mv docker docker-compose.yml harbor harbor-readme.md ./harbor-backup/
 
             echo "Unzipping harbor ..."
             unzip -a -u -q harbor.zip -x ".gitignore"
-            cp ./harbor/docker/php/ssh/* ./docker/php/ssh/
+            cp ./harbor-backup/docker/php/ssh/* ./docker/php/ssh/
 
             echo "Clean up ..."
             rm -rf harbor.zip
+            rm -rf harbor-backup
         else
             echo "Aborted"
         fi
@@ -123,7 +126,8 @@ function update {
             echo "Downloading harbor ionic..."
             git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor-ionic.git --format=zip --output="harbor-ionic.zip" $BRANCH
 
-            echo "Removing old harbor ..."
+            echo "Removing old harbor ionic ..."
+            rm -rf docker docker-compose.yml harbor-ionic harbor-ionic-readme.md
 
             echo "Unzipping harbor ionic ..."
             unzip -a -u -q harbor-ionic.zip -x ".gitignore"
