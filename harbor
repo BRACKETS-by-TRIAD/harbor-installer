@@ -22,12 +22,16 @@ function getBranch {
 
 function getArgsForNew {
     BRANCH="master"
+    DEV=""
     num=1
     for i in "$@"
     do
         case ${i} in
             -b=*|--branch=*)
                 BRANCH="${i#*=}"
+                ;;
+            --dev)
+                DEV="--dev"
                 ;;
 
             *)
@@ -152,7 +156,7 @@ function new {
     case "$TYPE" in
         craftable)
             install craftable -b=${BRANCH}
-            ./harbor new craftable
+            ./harbor new craftable ${DEV}
             ;;
 
         laravel)
