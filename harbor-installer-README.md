@@ -1,6 +1,6 @@
 # Harbor Installer #
 
-Harbor installer is a command to install, update harbor in your existing project, or create a new harbor project.
+Harbor installer is a command to install or update harbor in your existing project, or create a new harbor project.
 
 ## Install to your system ##
 
@@ -26,9 +26,9 @@ To install harbor to your existing project, first go to your project directory.
 
 `cd /path/to/your/project/`
 
-To install php (nginx, php, postgres db, testing postgres db, node, redis) to your project, run
+To install craftable|laravel|php (nginx, php, postgres db, testing postgres db, node, redis) to your project, run
 
-`harbor install php`
+`harbor install craftable|laravel|php`
 
 To install ionic (node) to your project, run
 
@@ -40,11 +40,11 @@ To update harbor in your project, run
 
 `harbor update`
 
-in your working directory and confirm all overrides. This will update harbor based on current harbor or harbor-ionic file.
+in your working directory and confirm all overrides. This will update harbor based on current harbor type.
 
 ## New harbor project (docker) ##
 
-To create a new harbor project, you can choose from multiple environments: `craftable`, `laravel`, `ionic` or `empty`.
+To create a new harbor project, you can choose from multiple environments: `craftable`, `laravel`, `php` or `ionic`.
 
 #### Craftable ####
 
@@ -52,7 +52,7 @@ To create craftable environment, run
 
 `harbor new craftable /path/to/your/project/`
 
-which will create the dir, install harbor (php) and run locally craftable new to prepare the app.
+which will create the dir, install harbor (craftable) and run locally craftable new to prepare the app.
 
 #### Laravel ####
 
@@ -60,7 +60,15 @@ To create laravel environment, run
 
 `harbor new laravel /path/to/your/project/`
 
-which will create the dir, install harbor (php) and run locally laravel new to prepare the app.
+which will create the dir, install harbor (laravel) and run locally laravel new to prepare the app.
+
+#### Php ####
+
+To create empty php environment, run 
+
+`harbor new php /path/to/your/project/`
+
+which will create the dir, install harbor (php), but nothing else.
 
 #### Ionic ####
 
@@ -69,11 +77,3 @@ To create ionic environment, run
 `harbor new ionic /path/to/your/project/`
 
 which will create the dir, install harbor (ionic) and run locally ionic start to prepare the app.
-
-#### Empty ####
-
-To create empty php environment, run 
-
-`harbor new empty /path/to/your/project/`
-
-which will create the dir, install harbor (php), but nothing else.
