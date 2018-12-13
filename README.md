@@ -149,6 +149,10 @@ In this section you can find all commands supported by harbor:
 
 `harbor new craftable` will install craftable application to current folder. See [new craftable project](#craftable), it is the recommended way.
 
+### SSH keys ###
+
+To use ssh keys in php container, copy your keys to ./docker/php/ssh. You have to restart container after adding keys.
+
 
 ## Harbor for ionic ##
 
