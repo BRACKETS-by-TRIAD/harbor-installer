@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-HARBOR_LARAVEL_REPOSITORY=ssh://git@bitbucket.org:TRIAD-Advertising/harbor-laravel.git
-HARBOR_IONIC_REPOSITORY=ssh://git@bitbucket.org/TRIAD-Advertising/harbor-ionic.git
+HARBOR_LARAVEL_REPOSITORY=ssh://git@github.com:BRACKETS-by-TRIAD/harbor-laravel.git
+HARBOR_IONIC_REPOSITORY=ssh://git@github.com:BRACKETS-by-TRIAD/harbor-ionic.git
 
 function missingHarbor {
     echo "Please use harbor install to add harbor to this folder."
