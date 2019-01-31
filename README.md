@@ -8,7 +8,7 @@ Harbor installer is a command to install or update harbor in your existing proje
 
 First clone this repo to your computer.
 
-`git clone git@bitbucket.org:TRIAD-Advertising/harbor-installer.git`
+`git clone git@github.com:BRACKETS-by-TRIAD/harbor-installer.git`
 
 Create harbor as global command (please change /path/to/this/harbor-installer to your path where you have cloned this repo)
 
