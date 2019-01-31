@@ -151,7 +151,7 @@ In this section you can find all commands supported by harbor:
 
 ### SSH keys ###
 
-To use ssh keys in php container, copy your keys to ./docker/php/ssh. You have to restart container after adding keys. SSH keys may be required for some git repos.
+To use ssh keys in php container, copy your keys to ./docker/php/ssh. You have to restart container after adding keys. SSH keys may be required for some git repositories.
 
 ## Harbor for ionic ##
 
