@@ -1,45 +1,220 @@
 #!/usr/bin/env bash
-if [ $# -eq 0 ]; then
-    if [ -f harbor ]; then
-        echo "Calling local harbor"
-        ./harbor
-    elif [ -f harbor-ionic ]; then
-        echo "Calling local harbor ionic"
-        ./harbor-ionic
-    elif [ ! -f harbor ]; then
-        echo "Please use harbor add to add harbor to this folder."
+
+HARBOR_LARAVEL_REPOSITORY=ssh://git@bitbucket.org:TRIAD-Advertising/harbor-laravel.git
+HARBOR_IONIC_REPOSITORY=ssh://git@bitbucket.org/TRIAD-Advertising/harbor-ionic.git
+
+function missingHarbor {
+    echo "Please use harbor install to add harbor to this folder."
+    exit 1
+}
+
+function getBranch {
+    # get requested branch
+    BRANCH="master"
+    for i in "$@"
+    do
+        case ${i} in
+            -b=*|--branch=*)
+                BRANCH="${i#*=}"
+                ;;
+            *)
+                ;;
+        esac
+    done
+}
+
+function getArgsForNew {
+    BRANCH="master"
+    DEV=""
+    num=1
+    for i in "$@"
+    do
+        case ${i} in
+            -b=*|--branch=*)
+                BRANCH="${i#*=}"
+                ;;
+            --dev)
+                DEV="--dev"
+                ;;
+
+            *)
+                if [ $num = 1 ]; then
+                    TYPE=$i
+                    num=$((num + 1))
+
+                elif [ $num = 2 ]; then
+                    DIR=$i
+                    num=$((num + 1))
+
+                fi
+                ;;
+        esac
+    done
+}
+
+function getArgsForInstall {
+    BRANCH="master"
+    num=1
+    for i in "$@"
+    do
+        case ${i} in
+            -b=*|--branch=*)
+                BRANCH="${i#*=}"
+                ;;
+
+            *)
+                if [[ $num = 1 ]]; then
+                    TYPE=$i
+                    num=$((num + 1))
+                fi
+                ;;
+        esac
+    done
+}
+
+function install {
+    getArgsForInstall "$@"
+
+    case "$TYPE" in
+        craftable|laravel|php)
+            REPOSITORY=${HARBOR_LARAVEL_REPOSITORY}
+            ;;
+
+        ionic)
+            REPOSITORY=${HARBOR_IONIC_REPOSITORY}
+            ;;
+
+        *)
+            echo $"Usage: $0 install {craftable|laravel|php|ionic}"
+            exit 1
+    esac
+
+    echo "Downloading harbor ..."
+    git archive --remote=${REPOSITORY} --format=zip --output="harbor.zip" ${BRANCH}
+    echo "Unzipping harbor ..."
+    unzip -a -u -q harbor.zip -x ".gitignore"
+    rm -rf harbor.zip
+}
+
+function update {
+    getBranch "$@"
+
+    if [[ -f harbor ]]; then
+        TYPE=$(./harbor -t)
+
+        case "$TYPE" in
+            craftable|laravel|php)
+                REPOSITORY=${HARBOR_LARAVEL_REPOSITORY}
+                ;;
+
+            ionic)
+                REPOSITORY=${HARBOR_IONIC_REPOSITORY}
+                ;;
+
+            *)
+                echo $"Usage: $0 update {craftable|laravel|php|ionic}"
+                exit 1
+        esac
+
+        echo -n "Are you sure you want to update harbor, all customization in harbor files will be deleted (y/n)? "
+        old_stty_cfg=$(stty -g)
+        stty raw -echo ; answer=$(head -c 1) ; stty ${old_stty_cfg} # Careful playing with stty
+        if echo "$answer" | grep -iq "^y" ;then
+            echo "Downloading harbor ..."
+            git archive --remote=${REPOSITORY} --format=zip --output="harbor.zip" ${BRANCH}
+
+            echo "Removing old harbor ..."
+            mkdir -p ./harbor-backup/
+            mv docker docker-compose.yml harbor harbor-README.md ./harbor-backup/
+
+            echo "Unzipping harbor ..."
+            unzip -a -u -q harbor.zip -x ".gitignore"
+            if [[ -d "./harbor-backup/docker/php/ssh" ]]; then
+                cp ./harbor-backup/docker/php/ssh/* ./docker/php/ssh/
+            fi
+
+            echo "Clean up ..."
+            rm -rf harbor.zip
+            rm -rf harbor-backup
+        else
+            echo "Aborted"
+        fi
+    else
+        missingHarbor
+    fi
+}
+
+function new {
+    getArgsForNew "$@"
+
+    # create dir
+    if [[ -z "$DIR" ]]; then
+        echo "No directory name provided."
         exit 1
     fi
-elif [ "$1" == "add" ]; then
-    if [ -z "$2" ]; then
-        echo "Downloading harbor ..."
-    	git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" master
-    	echo "Unzipping harbor ..."
-    	unzip -a -u -q harbor.zip -x ".gitignore"
-    	rm -rf harbor.zip
-    elif [ "$2" == "ionic" ]; then
-        echo "Downloading harbor ionic..."
-        git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor-ionic.git --format=zip --output="harbor-ionic.zip" master
-        echo "Unzipping harbor ionic ..."
-        unzip -a -u -q harbor-ionic.zip -x ".gitignore"
-        rm -rf harbor-ionic.zip
+
+    mkdir -p ${DIR}
+    cd ${DIR}
+
+    case "$TYPE" in
+        craftable)
+            install craftable -b=${BRANCH}
+            ./harbor new craftable ${DEV}
+            ;;
+
+        laravel)
+            install laravel -b=${BRANCH}
+            ./harbor new laravel
+            ;;
+
+        php)
+            install php -b=${BRANCH}
+            ;;
+
+        ionic)
+            install ionic -b=${BRANCH}
+            ./harbor new ionic
+            ;;
+
+        *)
+            echo $"Usage: $0 new {craftable|laravel|php|ionic} /path/to/project"
+            exit 1
+            ;;
+    esac
+}
+
+function callLocal {
+    if [[ -f harbor ]]; then
+        echo "Calling local harbor with parameters ..."
+        ./harbor "$@"
+    else
+        missingHarbor
     fi
-elif [ "$1" == "update" ]; then
-    if [ -z "$2" ]; then
-        echo "Downloading harbor ..."
-        git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor.git --format=zip --output="harbor.zip" master
-        echo "Unzipping harbor ..."
-        unzip -a -u -q harbor.zip -x ".gitignore"
-        echo "Removing harbor ..."
-        rm -rf harbor.zip
-    elif [ "$2" == "ionic" ]; then
-        echo "Downloading harbor ionic..."
-        git archive --remote=ssh://git@bitbucket.org/TRIAD-Advertising/harbor-ionic.git --format=zip --output="harbor-ionic.zip" master
-        echo "Unzipping harbor ionic ..."
-        unzip -a -u -q harbor-ionic.zip -x ".gitignore"
-        rm -rf harbor-ionic.zip
-    fi
-else
-    echo "Calling local harbor with parameters"
-    ./harbor "$@"
-fi
+}
+
+case "$1" in
+    install)
+        # install harbor to current directory
+        shift 1
+        install "$@"
+        ;;
+
+    update)
+        # update harbor in current directory
+        shift 1
+        update "$@"
+        ;;
+
+    new)
+        # create new environment
+        shift 1
+        new "$@"
+        ;;
+
+    *)
+        # all other commands, call local harbor
+        callLocal "$@"
+        ;;
+esac
+
+
