@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
-HARBOR_LARAVEL_REPOSITORY=ssh://git@github.com:BRACKETS-by-TRIAD/harbor-laravel.git
-HARBOR_IONIC_REPOSITORY=ssh://git@github.com:BRACKETS-by-TRIAD/harbor-ionic.git
+GITHUB_VENDOR_URL=https://github.com/BRACKETS-by-TRIAD/
+HARBOR_LARAVEL=harbor-laravel
+HARBOR_IONIC=harbor-ionic
 
 function missingHarbor {
     echo "Please use harbor install to add harbor to this folder."
@@ -77,11 +78,11 @@ function install {
 
     case "$TYPE" in
         craftable|laravel|php)
-            REPOSITORY=${HARBOR_LARAVEL_REPOSITORY}
+            HARBOR=${HARBOR_LARAVEL}
             ;;
 
         ionic)
-            REPOSITORY=${HARBOR_IONIC_REPOSITORY}
+            HARBOR=${HARBOR_IONIC}
             ;;
 
         *)
@@ -90,9 +91,17 @@ function install {
     esac
 
     echo "Downloading harbor ..."
-    git archive --remote=${REPOSITORY} --format=zip --output="harbor.zip" ${BRANCH}
+    curl -L ${GITHUB_VENDOR_URL}${HARBOR}/archive/${BRANCH}.zip > harbor.zip
+
     echo "Unzipping harbor ..."
-    unzip -a -u -q harbor.zip -x ".gitignore"
+    unzip -a -u -q harbor.zip
+    HARBOR_DIR=${HARBOR}-${BRANCH}
+    mv ${HARBOR_DIR}/README.md ./harbor-README.md
+    rm -rf ${HARBOR_DIR}/.gitignore
+    mv ${HARBOR_DIR}/* .
+
+    echo "Removing zip file ..."
+    rm -rf ${HARBOR_DIR}
     rm -rf harbor.zip
 }
 
@@ -104,11 +113,11 @@ function update {
 
         case "$TYPE" in
             craftable|laravel|php)
-                REPOSITORY=${HARBOR_LARAVEL_REPOSITORY}
+                HARBOR=${HARBOR_LARAVEL}
                 ;;
 
             ionic)
-                REPOSITORY=${HARBOR_IONIC_REPOSITORY}
+                HARBOR=${HARBOR_IONIC}
                 ;;
 
             *)
@@ -121,19 +130,24 @@ function update {
         stty raw -echo ; answer=$(head -c 1) ; stty ${old_stty_cfg} # Careful playing with stty
         if echo "$answer" | grep -iq "^y" ;then
             echo "Downloading harbor ..."
-            git archive --remote=${REPOSITORY} --format=zip --output="harbor.zip" ${BRANCH}
+            curl -L ${GITHUB_VENDOR_URL}${HARBOR}/archive/${BRANCH}.zip > harbor.zip
 
             echo "Removing old harbor ..."
             mkdir -p ./harbor-backup/
             mv docker docker-compose.yml harbor harbor-README.md ./harbor-backup/
 
             echo "Unzipping harbor ..."
-            unzip -a -u -q harbor.zip -x ".gitignore"
+            unzip -a -u -q harbor.zip
+            HARBOR_DIR=${HARBOR}-${BRANCH}
+            mv ${HARBOR_DIR}/README.md ./harbor-README.md
+            rm -rf ${HARBOR_DIR}/.gitignore
+            mv ${HARBOR_DIR}/* .
             if [[ -d "./harbor-backup/docker/php/ssh" ]]; then
-                cp ./harbor-backup/docker/php/ssh/* ./docker/php/ssh/
+                cp ./harbor-backup/docker/php/ssh/* ./docker/php/ssh/ 2>/dev/null
             fi
 
             echo "Clean up ..."
+            rm -rf ${HARBOR_DIR}
             rm -rf harbor.zip
             rm -rf harbor-backup
         else
