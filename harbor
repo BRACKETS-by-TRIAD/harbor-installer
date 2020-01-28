@@ -100,6 +100,13 @@ function install {
     rm -rf ${HARBOR_DIR}/.gitignore
     mv ${HARBOR_DIR}/* .
 
+    VERSION=$(./harbor -v)
+    MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$VERSION")"
+    if [[ $MAJOR_VERSION -eq '3' ]]; then
+      mv ${HARBOR_DIR}/.harbor .
+      cp ./docker-compose.override.example.yml ./docker-compose.override.yml
+    fi
+
     echo "Removing zip file ..."
     rm -rf ${HARBOR_DIR}
     rm -rf harbor.zip
@@ -125,6 +132,9 @@ function update {
                 exit 1
         esac
 
+        VERSION=$(./harbor -v)
+        MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$VERSION")"
+
         echo -n "Are you sure you want to update harbor, all customization in harbor files will be deleted (y/n)? "
         old_stty_cfg=$(stty -g)
         stty raw -echo ; answer=$(head -c 1) ; stty ${old_stty_cfg} # Careful playing with stty
@@ -132,30 +142,84 @@ function update {
             echo "Downloading harbor ..."
             curl -L ${GITHUB_VENDOR_URL}${HARBOR}/archive/${BRANCH}.zip > harbor.zip
 
-            echo "Removing old harbor ..."
-            mkdir -p ./harbor-backup/
-            mv docker docker-compose.yml harbor harbor-README.md ./harbor-backup/
-
             echo "Unzipping harbor ..."
             unzip -a -u -q harbor.zip
             HARBOR_DIR=${HARBOR}-${BRANCH}
-            mv ${HARBOR_DIR}/README.md ./harbor-README.md
-            rm -rf ${HARBOR_DIR}/.gitignore
-            mv ${HARBOR_DIR}/* .
-            if [[ -d "./harbor-backup/docker/php/ssh" ]]; then
-                cp ./harbor-backup/docker/php/ssh/* ./docker/php/ssh/ 2>/dev/null
-            fi
 
-            echo "Clean up ..."
-            rm -rf ${HARBOR_DIR}
-            rm -rf harbor.zip
-            rm -rf harbor-backup
+            if [[ $MAJOR_VERSION -eq '2' ]]; then
+              updatev2
+            elif [[ $MAJOR_VERSION -eq '3' ]]; then
+              updatev3
+            fi
+            UPDATED=$?
+
+            if [[ $UPDATED == 0 ]]; then
+              echo "Clean up ..."
+              rm -rf ${HARBOR_DIR}
+              rm -rf harbor.zip
+              rm -rf harbor-backup
+            fi
         else
             echo "Aborted"
         fi
     else
         missingHarbor
     fi
+}
+
+function updatev2 {
+    NEW_VERSION=$(./${HARBOR_DIR}/harbor -v)
+    NEW_MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$NEW_VERSION")"
+    if [[ $NEW_MAJOR_VERSION -gt '2' ]]; then
+      echo "Cannot upgrade version 2 to version 3 automaticaly, please update manualy. New harbor files are in ${HARBOR_DIR}."
+      return 1
+    fi
+
+    echo "Removing old harbor ..."
+    mkdir -p ./harbor-backup/
+    mv docker docker-compose.yml harbor harbor-README.md ./harbor-backup/
+
+    mv ${HARBOR_DIR}/README.md ./harbor-README.md
+    rm -rf ${HARBOR_DIR}/.gitignore
+    mv ${HARBOR_DIR}/* .
+    if [[ -d "./harbor-backup/docker/php/ssh" ]]; then
+        cp ./harbor-backup/docker/php/ssh/* ./docker/php/ssh/ 2>/dev/null
+    fi
+    return 0
+}
+
+function updatev3 {
+    NEW_VERSION=$(./${HARBOR_DIR}/harbor -v)
+    NEW_MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$NEW_VERSION")"
+    if [[ $NEW_MAJOR_VERSION -gt '3' ]]; then
+      echo "Cannot upgrade version 3 to version 4 automaticaly, please update manualy. New harbor files are in ${HARBOR_DIR}."
+      return 1
+    fi
+
+    echo "Removing old harbor ..."
+    mkdir -p ./harbor-backup/
+    mv .harbor docker-compose.yml docker-compose.override.example.yml harbor harbor-README.md ./harbor-backup/
+
+    mv ${HARBOR_DIR}/README.md ./harbor-README.md
+    rm -rf ${HARBOR_DIR}/.gitignore
+    mv ${HARBOR_DIR}/* .
+    mv ${HARBOR_DIR}/.harbor .
+    if [[ -d "./harbor-backup/.harbor/php/ssh" ]]; then
+        cp ./harbor-backup/.harbor/php/ssh/* ./.harbor/php/ssh/ 2>/dev/null
+    fi
+    if [[ -d "./harbor-backup/.harbor/db/docker-entrypoint-initdb.d" ]]; then
+        cp ./harbor-backup/.harbor/db/docker-entrypoint-initdb.d/* ./.harbor/db/docker-entrypoint-initdb.d/ 2>/dev/null
+    fi
+    if [[ -d "./harbor-backup/.harbor/db/export" ]]; then
+        cp ./harbor-backup/.harbor/db/export/* ./.harbor/db/export/ 2>/dev/null
+    fi
+    if [[ -d "./harbor-backup/.harbor/db/import" ]]; then
+        cp ./harbor-backup/.harbor/db/import/* ./.harbor/db/import/ 2>/dev/null
+    fi
+    if [[ -d "./harbor-backup/.harbor/db-testing/docker-entrypoint-initdb.d" ]]; then
+        cp ./harbor-backup/.harbor/db-testing/docker-entrypoint-initdb.d/* ./.harbor/db-testing/docker-entrypoint-initdb.d/ 2>/dev/null
+    fi
+    return 0
 }
 
 function new {
@@ -219,7 +283,7 @@ case "$1" in
         update "$@"
         ;;
 
-    new)
+    create-project | new)
         # create new environment
         shift 1
         new "$@"
