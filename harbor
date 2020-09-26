@@ -98,12 +98,12 @@ function install {
     HARBOR_DIR=${HARBOR}-${BRANCH}
     mv ${HARBOR_DIR}/README.md ./harbor-README.md
     rm -rf ${HARBOR_DIR}/.gitignore
+    shopt -s dotglob
     mv ${HARBOR_DIR}/* .
 
     VERSION=$(./harbor -v)
     MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$VERSION")"
     if [[ $MAJOR_VERSION -eq '3' ]]; then
-      mv ${HARBOR_DIR}/.harbor .
       cp ./docker-compose.override.example.yml ./docker-compose.override.yml
     fi
 
@@ -146,7 +146,24 @@ function update {
             unzip -a -u -q harbor.zip
             HARBOR_DIR=${HARBOR}-${BRANCH}
 
-            if [[ $MAJOR_VERSION -eq '2' ]]; then
+            NEW_VERSION=$(./${HARBOR_DIR}/harbor -v)
+            NEW_MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$NEW_VERSION")"
+            if [[ $NEW_MAJOR_VERSION -gt $MAJOR_VERSION ]]; then
+              echo "Cannot update version $MAJOR_VERSION to version $NEW_MAJOR_VERSION+ automatically, please update manually. New harbor files are in ${HARBOR_DIR}."
+              exit 1
+            fi
+
+            vercomp $VERSION $NEW_VERSION
+            if [[ $? -eq 1 ]]; then
+              echo "Cannot update to lower version."
+              rm -rf ${HARBOR_DIR}
+              rm -rf harbor.zip
+              exit 2
+            fi
+
+            if [[ $MAJOR_VERSION -eq '1' ]]; then
+              updatev1
+            elif [[ $MAJOR_VERSION -eq '2' ]]; then
               updatev2
             elif [[ $MAJOR_VERSION -eq '3' ]]; then
               updatev3
@@ -157,7 +174,6 @@ function update {
               echo "Clean up ..."
               rm -rf ${HARBOR_DIR}
               rm -rf harbor.zip
-              rm -rf harbor-backup
             fi
         else
             echo "Aborted"
@@ -167,43 +183,47 @@ function update {
     fi
 }
 
-function updatev2 {
-    NEW_VERSION=$(./${HARBOR_DIR}/harbor -v)
-    NEW_MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$NEW_VERSION")"
-    if [[ $NEW_MAJOR_VERSION -gt '2' ]]; then
-      echo "Cannot upgrade version 2 to version 3 automaticaly, please update manualy. New harbor files are in ${HARBOR_DIR}."
-      return 1
-    fi
-
+function updatev1 {
     echo "Removing old harbor ..."
     mkdir -p ./harbor-backup/
     mv docker docker-compose.yml harbor harbor-README.md ./harbor-backup/
 
     mv ${HARBOR_DIR}/README.md ./harbor-README.md
     rm -rf ${HARBOR_DIR}/.gitignore
+    shopt -s dotglob
     mv ${HARBOR_DIR}/* .
     if [[ -d "./harbor-backup/docker/php/ssh" ]]; then
         cp ./harbor-backup/docker/php/ssh/* ./docker/php/ssh/ 2>/dev/null
     fi
+    rm -rf harbor-backup
+    return 0
+}
+
+function updatev2 {
+    echo "Removing old harbor ..."
+    mkdir -p ./harbor-backup/
+    mv docker docker-compose.yml harbor harbor-README.md ./harbor-backup/
+
+    mv ${HARBOR_DIR}/README.md ./harbor-README.md
+    rm -rf ${HARBOR_DIR}/.gitignore
+    shopt -s dotglob
+    mv ${HARBOR_DIR}/* .
+    if [[ -d "./harbor-backup/docker/php/ssh" ]]; then
+        cp ./harbor-backup/docker/php/ssh/* ./docker/php/ssh/ 2>/dev/null
+    fi
+    rm -rf harbor-backup
     return 0
 }
 
 function updatev3 {
-    NEW_VERSION=$(./${HARBOR_DIR}/harbor -v)
-    NEW_MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$NEW_VERSION")"
-    if [[ $NEW_MAJOR_VERSION -gt '3' ]]; then
-      echo "Cannot upgrade version 3 to version 4 automaticaly, please update manualy. New harbor files are in ${HARBOR_DIR}."
-      return 1
-    fi
-
     echo "Removing old harbor ..."
     mkdir -p ./harbor-backup/
-    mv .harbor docker-compose.yml docker-compose.override.example.yml harbor harbor-README.md ./harbor-backup/
+    mv .harbor docker-compose.yml docker-compose.override.yml docker-compose.override.example.yml harbor harbor-README.md ./harbor-backup/
 
     mv ${HARBOR_DIR}/README.md ./harbor-README.md
     rm -rf ${HARBOR_DIR}/.gitignore
+    shopt -s dotglob
     mv ${HARBOR_DIR}/* .
-    mv ${HARBOR_DIR}/.harbor .
     if [[ -d "./harbor-backup/.harbor/php/ssh" ]]; then
         cp ./harbor-backup/.harbor/php/ssh/* ./.harbor/php/ssh/ 2>/dev/null
     fi
@@ -219,6 +239,10 @@ function updatev3 {
     if [[ -d "./harbor-backup/.harbor/db-testing/docker-entrypoint-initdb.d" ]]; then
         cp ./harbor-backup/.harbor/db-testing/docker-entrypoint-initdb.d/* ./.harbor/db-testing/docker-entrypoint-initdb.d/ 2>/dev/null
     fi
+        if [[ -d "./harbor-backup/docker-compose.override.yml" ]]; then
+        cp ./harbor-backup/docker-compose.override.yml ./docker-compose.override.yml 2>/dev/null
+    fi
+    rm -rf harbor-backup
     return 0
 }
 
@@ -268,6 +292,37 @@ function callLocal {
     else
         missingHarbor
     fi
+}
+
+vercomp () {
+    if [[ $1 == $2 ]]
+    then
+        return 0
+    fi
+    local IFS=.
+    local i ver1=($1) ver2=($2)
+    # fill empty fields in ver1 with zeros
+    for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
+    do
+        ver1[i]=0
+    done
+    for ((i=0; i<${#ver1[@]}; i++))
+    do
+        if [[ -z ${ver2[i]} ]]
+        then
+            # fill empty fields in ver2 with zeros
+            ver2[i]=0
+        fi
+        if ((10#${ver1[i]} > 10#${ver2[i]}))
+        then
+            return 1
+        fi
+        if ((10#${ver1[i]} < 10#${ver2[i]}))
+        then
+            return 2
+        fi
+    done
+    return 0
 }
 
 case "$1" in
