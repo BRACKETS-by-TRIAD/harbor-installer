@@ -224,8 +224,8 @@ function updatev3 {
     rm -rf ${HARBOR_DIR}/.gitignore
     shopt -s dotglob
     mv ${HARBOR_DIR}/* .
-    if [[ -d "./harbor-backup/.harbor/php/ssh" ]]; then
-        cp ./harbor-backup/.harbor/php/ssh/* ./.harbor/php/ssh/ 2>/dev/null
+    if [[ -d "./harbor-backup/.harbor/ssh" ]]; then
+        cp ./harbor-backup/.harbor/ssh/* ./.harbor/ssh/ 2>/dev/null
     fi
     if [[ -d "./harbor-backup/.harbor/db/docker-entrypoint-initdb.d" ]]; then
         cp ./harbor-backup/.harbor/db/docker-entrypoint-initdb.d/* ./.harbor/db/docker-entrypoint-initdb.d/ 2>/dev/null
