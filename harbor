@@ -133,6 +133,7 @@ function update {
         esac
 
         VERSION=$(./harbor -v)
+        VERSION=$(./harbor -v)
         MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$VERSION")"
 
         echo -n "Are you sure you want to update harbor, all customization in harbor files will be deleted (y/n)? "
@@ -146,6 +147,7 @@ function update {
             unzip -a -u -q harbor.zip
             HARBOR_DIR=${HARBOR}-${BRANCH}
 
+            NEW_VERSION=$(./${HARBOR_DIR}/harbor -v)
             NEW_VERSION=$(./${HARBOR_DIR}/harbor -v)
             NEW_MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$NEW_VERSION")"
             if [[ $NEW_MAJOR_VERSION -gt $MAJOR_VERSION ]]; then
