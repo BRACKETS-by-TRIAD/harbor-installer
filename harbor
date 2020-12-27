@@ -9,6 +9,31 @@ function missingHarbor {
     exit 1
 }
 
+function setSed {
+    # check sed command
+    UNAMEOUT="$(uname -s)"
+    case "${UNAMEOUT}" in
+    Linux*)
+        SEDCMD="sed -i"
+        ;;
+    Darwin*)
+        SEDCMD="sed -i .bak"
+        ;;
+    MINGW64_NT-10.0*)
+        SEDCMD="sed -i"
+        ;;
+    *)
+        echo "Unsupported system type"
+        echo "System must be a Macintosh/Linux/Windows"
+        echo ""
+        echo "System detection determined via uname command"
+        echo "If the following is empty, could not find uname command: $(which uname)"
+        echo "Your reported uname is: $(uname -s)"
+        exit 1
+        ;;
+    esac
+}
+
 function getBranch {
     # get requested branch
     BRANCH="master"
@@ -19,6 +44,19 @@ function getBranch {
                 BRANCH="${i#*=}"
                 ;;
             *)
+                ;;
+        esac
+    done
+}
+
+function getPhpVersion {
+    PHP=""
+    num=1
+    for i in "$@"
+    do
+        case ${i} in
+            -p=*|--php=*)
+                PHP="${i#*=}"
                 ;;
         esac
     done
@@ -92,6 +130,7 @@ function install {
     case "$TYPE" in
         craftable|laravel|php)
             HARBOR=${HARBOR_LARAVEL}
+            getPhpVersion "$@"
             ;;
 
         ionic)
@@ -118,6 +157,13 @@ function install {
     MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$VERSION")"
     if [[ $MAJOR_VERSION -eq '3' ]]; then
       cp ./docker-compose.override.example.yml ./docker-compose.override.yml
+    fi
+
+    if [[ -n "$PHP" ]]; then
+        if [[ $PHP = "7.3" || $PHP = "7.4" ]]; then
+            setSed
+            ${SEDCMD} "s/HARBOR_PHP_VERSION=.*/HARBOR_PHP_VERSION=${PHP}/" .env.harbor
+        fi
     fi
 
     echo "Removing zip file ..."
@@ -273,19 +319,21 @@ function new {
     mkdir -p ${DIR}
     cd ${DIR}
 
+    getPhpVersion "$@"
+
     case "$TYPE" in
         craftable)
-            install craftable -b=${BRANCH}
+            install craftable -b=${BRANCH} -p=${PHP}
             ./harbor new craftable ${DEV}
             ;;
 
         laravel)
-            install laravel -b=${BRANCH}
+            install laravel -b=${BRANCH} -p=${PHP}
             ./harbor new laravel
             ;;
 
         php)
-            install php -b=${BRANCH}
+            install php -b=${BRANCH} -p=${PHP}
             ;;
 
         ionic)
