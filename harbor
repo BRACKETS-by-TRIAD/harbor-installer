@@ -34,6 +34,13 @@ function getArgsForNew {
             -b=*|--branch=*)
                 BRANCH="${i#*=}"
                 ;;
+
+            -v=*|--version=*)
+                if [ ${i#*=} = '2.0' ]; then
+                    BRANCH="2.0"
+                fi
+                ;;
+
             --dev)
                 DEV="--dev"
                 ;;
@@ -61,6 +68,12 @@ function getArgsForInstall {
         case ${i} in
             -b=*|--branch=*)
                 BRANCH="${i#*=}"
+                ;;
+
+            -v=*|--version=*)
+                if [ ${i#*=} = '2.0' ]; then
+                    BRANCH="2.0"
+                fi
                 ;;
 
             *)
