@@ -279,7 +279,7 @@ function updatev2 {
 function updatev3 {
     echo "Removing old harbor ..."
     mkdir -p ./harbor-backup/
-    mv .harbor docker-compose.yml docker-compose.override.yml docker-compose.override.example.yml harbor harbor-README.md ./harbor-backup/
+    mv .harbor docker-compose.yml docker-compose.override.yml docker-compose.override.example.yml harbor harbor-README.md .env.harbor ./harbor-backup/
 
     mv ${HARBOR_DIR}/README.md ./harbor-README.md
     rm -rf ${HARBOR_DIR}/.gitignore
@@ -300,8 +300,11 @@ function updatev3 {
     if [[ -d "./harbor-backup/.harbor/db-testing/docker-entrypoint-initdb.d" ]]; then
         cp ./harbor-backup/.harbor/db-testing/docker-entrypoint-initdb.d/* ./.harbor/db-testing/docker-entrypoint-initdb.d/ 2>/dev/null
     fi
-        if [[ -d "./harbor-backup/docker-compose.override.yml" ]]; then
+    if [[ -f "./harbor-backup/docker-compose.override.yml" ]]; then
         cp ./harbor-backup/docker-compose.override.yml ./docker-compose.override.yml 2>/dev/null
+    fi
+    if [[ -f "./harbor-backup/.env.harbor" ]]; then
+        cp ./harbor-backup/.env.harbor ./.env.harbor 2>/dev/null
     fi
     rm -rf harbor-backup
     return 0
