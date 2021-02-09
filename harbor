@@ -9,6 +9,31 @@ function missingHarbor {
     exit 1
 }
 
+function setSed {
+    # check sed command
+    UNAMEOUT="$(uname -s)"
+    case "${UNAMEOUT}" in
+    Linux*)
+        SEDCMD="sed -i"
+        ;;
+    Darwin*)
+        SEDCMD="sed -i .bak"
+        ;;
+    MINGW64_NT-10.0*)
+        SEDCMD="sed -i"
+        ;;
+    *)
+        echo "Unsupported system type"
+        echo "System must be a Macintosh/Linux/Windows"
+        echo ""
+        echo "System detection determined via uname command"
+        echo "If the following is empty, could not find uname command: $(which uname)"
+        echo "Your reported uname is: $(uname -s)"
+        exit 1
+        ;;
+    esac
+}
+
 function getBranch {
     # get requested branch
     BRANCH="master"
@@ -24,6 +49,19 @@ function getBranch {
     done
 }
 
+function getPhpVersion {
+    PHP=""
+    num=1
+    for i in "$@"
+    do
+        case ${i} in
+            -p=*|--php=*)
+                PHP="${i#*=}"
+                ;;
+        esac
+    done
+}
+
 function getArgsForNew {
     BRANCH="master"
     DEV=""
@@ -34,6 +72,13 @@ function getArgsForNew {
             -b=*|--branch=*)
                 BRANCH="${i#*=}"
                 ;;
+
+            -v=*|--version=*)
+                if [ ${i#*=} = '2.0' ]; then
+                    BRANCH="2.0"
+                fi
+                ;;
+
             --dev)
                 DEV="--dev"
                 ;;
@@ -63,6 +108,12 @@ function getArgsForInstall {
                 BRANCH="${i#*=}"
                 ;;
 
+            -v=*|--version=*)
+                if [ ${i#*=} = '2.0' ]; then
+                    BRANCH="2.0"
+                fi
+                ;;
+
             *)
                 if [[ $num = 1 ]]; then
                     TYPE=$i
@@ -79,6 +130,7 @@ function install {
     case "$TYPE" in
         craftable|laravel|php)
             HARBOR=${HARBOR_LARAVEL}
+            getPhpVersion "$@"
             ;;
 
         ionic)
@@ -98,7 +150,21 @@ function install {
     HARBOR_DIR=${HARBOR}-${BRANCH}
     mv ${HARBOR_DIR}/README.md ./harbor-README.md
     rm -rf ${HARBOR_DIR}/.gitignore
+    shopt -s dotglob
     mv ${HARBOR_DIR}/* .
+
+    VERSION=$(./harbor -v)
+    MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$VERSION")"
+    if [[ $MAJOR_VERSION -eq '3' ]]; then
+      cp ./docker-compose.override.example.yml ./docker-compose.override.yml
+    fi
+
+    if [[ -n "$PHP" ]]; then
+        if [[ $PHP = "7.3" || $PHP = "7.4" ]]; then
+            setSed
+            ${SEDCMD} "s/HARBOR_PHP_VERSION=.*/HARBOR_PHP_VERSION=${PHP}/" .env.harbor
+        fi
+    fi
 
     echo "Removing zip file ..."
     rm -rf ${HARBOR_DIR}
@@ -125,6 +191,10 @@ function update {
                 exit 1
         esac
 
+        VERSION=$(./harbor -v)
+        VERSION=$(./harbor -v)
+        MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$VERSION")"
+
         echo -n "Are you sure you want to update harbor, all customization in harbor files will be deleted (y/n)? "
         old_stty_cfg=$(stty -g)
         stty raw -echo ; answer=$(head -c 1) ; stty ${old_stty_cfg} # Careful playing with stty
@@ -132,30 +202,112 @@ function update {
             echo "Downloading harbor ..."
             curl -L ${GITHUB_VENDOR_URL}${HARBOR}/archive/${BRANCH}.zip > harbor.zip
 
-            echo "Removing old harbor ..."
-            mkdir -p ./harbor-backup/
-            mv docker docker-compose.yml harbor harbor-README.md ./harbor-backup/
-
             echo "Unzipping harbor ..."
             unzip -a -u -q harbor.zip
             HARBOR_DIR=${HARBOR}-${BRANCH}
-            mv ${HARBOR_DIR}/README.md ./harbor-README.md
-            rm -rf ${HARBOR_DIR}/.gitignore
-            mv ${HARBOR_DIR}/* .
-            if [[ -d "./harbor-backup/docker/php/ssh" ]]; then
-                cp ./harbor-backup/docker/php/ssh/* ./docker/php/ssh/ 2>/dev/null
+
+            NEW_VERSION=$(./${HARBOR_DIR}/harbor -v)
+            NEW_VERSION=$(./${HARBOR_DIR}/harbor -v)
+            NEW_MAJOR_VERSION="$(cut -d '.' -f 1 <<< "$NEW_VERSION")"
+            if [[ $NEW_MAJOR_VERSION -gt $MAJOR_VERSION ]]; then
+              echo "Cannot update version $MAJOR_VERSION to version $NEW_MAJOR_VERSION+ automatically, please update manually. New harbor files are in ${HARBOR_DIR}."
+              exit 1
             fi
 
-            echo "Clean up ..."
-            rm -rf ${HARBOR_DIR}
-            rm -rf harbor.zip
-            rm -rf harbor-backup
+            vercomp $VERSION $NEW_VERSION
+            if [[ $? -eq 1 ]]; then
+              echo "Cannot update to lower version."
+              rm -rf ${HARBOR_DIR}
+              rm -rf harbor.zip
+              exit 2
+            fi
+
+            if [[ $MAJOR_VERSION -eq '1' ]]; then
+              updatev1
+            elif [[ $MAJOR_VERSION -eq '2' ]]; then
+              updatev2
+            elif [[ $MAJOR_VERSION -eq '3' ]]; then
+              updatev3
+            fi
+            UPDATED=$?
+
+            if [[ $UPDATED == 0 ]]; then
+              echo "Clean up ..."
+              rm -rf ${HARBOR_DIR}
+              rm -rf harbor.zip
+            fi
         else
             echo "Aborted"
         fi
     else
         missingHarbor
     fi
+}
+
+function updatev1 {
+    echo "Removing old harbor ..."
+    mkdir -p ./harbor-backup/
+    mv docker docker-compose.yml harbor harbor-README.md ./harbor-backup/
+
+    mv ${HARBOR_DIR}/README.md ./harbor-README.md
+    rm -rf ${HARBOR_DIR}/.gitignore
+    shopt -s dotglob
+    mv ${HARBOR_DIR}/* .
+    if [[ -d "./harbor-backup/docker/php/ssh" ]]; then
+        cp ./harbor-backup/docker/php/ssh/* ./docker/php/ssh/ 2>/dev/null
+    fi
+    rm -rf harbor-backup
+    return 0
+}
+
+function updatev2 {
+    echo "Removing old harbor ..."
+    mkdir -p ./harbor-backup/
+    mv docker docker-compose.yml harbor harbor-README.md ./harbor-backup/
+
+    mv ${HARBOR_DIR}/README.md ./harbor-README.md
+    rm -rf ${HARBOR_DIR}/.gitignore
+    shopt -s dotglob
+    mv ${HARBOR_DIR}/* .
+    if [[ -d "./harbor-backup/docker/php/ssh" ]]; then
+        cp ./harbor-backup/docker/php/ssh/* ./docker/php/ssh/ 2>/dev/null
+    fi
+    rm -rf harbor-backup
+    return 0
+}
+
+function updatev3 {
+    echo "Removing old harbor ..."
+    mkdir -p ./harbor-backup/
+    mv .harbor docker-compose.yml docker-compose.override.yml docker-compose.override.example.yml harbor harbor-README.md .env.harbor ./harbor-backup/
+
+    mv ${HARBOR_DIR}/README.md ./harbor-README.md
+    rm -rf ${HARBOR_DIR}/.gitignore
+    shopt -s dotglob
+    mv ${HARBOR_DIR}/* .
+    if [[ -d "./harbor-backup/.harbor/ssh" ]]; then
+        cp ./harbor-backup/.harbor/ssh/* ./.harbor/ssh/ 2>/dev/null
+    fi
+    if [[ -d "./harbor-backup/.harbor/db/docker-entrypoint-initdb.d" ]]; then
+        cp ./harbor-backup/.harbor/db/docker-entrypoint-initdb.d/* ./.harbor/db/docker-entrypoint-initdb.d/ 2>/dev/null
+    fi
+    if [[ -d "./harbor-backup/.harbor/db/export" ]]; then
+        cp ./harbor-backup/.harbor/db/export/* ./.harbor/db/export/ 2>/dev/null
+    fi
+    if [[ -d "./harbor-backup/.harbor/db/import" ]]; then
+        cp ./harbor-backup/.harbor/db/import/* ./.harbor/db/import/ 2>/dev/null
+    fi
+    if [[ -d "./harbor-backup/.harbor/db-testing/docker-entrypoint-initdb.d" ]]; then
+        cp ./harbor-backup/.harbor/db-testing/docker-entrypoint-initdb.d/* ./.harbor/db-testing/docker-entrypoint-initdb.d/ 2>/dev/null
+    fi
+    if [[ -f "./harbor-backup/docker-compose.override.yml" ]]; then
+        cp ./harbor-backup/docker-compose.override.yml ./docker-compose.override.yml 2>/dev/null
+    fi
+    if [[ -f "./harbor-backup/.env.harbor" ]]; then
+        cp ./harbor-backup/.env.harbor ./.env.harbor 2>/dev/null
+    fi
+    rm -rf harbor-backup
+    return 0
 }
 
 function new {
@@ -170,19 +322,21 @@ function new {
     mkdir -p ${DIR}
     cd ${DIR}
 
+    getPhpVersion "$@"
+
     case "$TYPE" in
         craftable)
-            install craftable -b=${BRANCH}
+            install craftable -b=${BRANCH} -p=${PHP}
             ./harbor new craftable ${DEV}
             ;;
 
         laravel)
-            install laravel -b=${BRANCH}
+            install laravel -b=${BRANCH} -p=${PHP}
             ./harbor new laravel
             ;;
 
         php)
-            install php -b=${BRANCH}
+            install php -b=${BRANCH} -p=${PHP}
             ;;
 
         ionic)
@@ -206,6 +360,37 @@ function callLocal {
     fi
 }
 
+vercomp () {
+    if [[ $1 == $2 ]]
+    then
+        return 0
+    fi
+    local IFS=.
+    local i ver1=($1) ver2=($2)
+    # fill empty fields in ver1 with zeros
+    for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
+    do
+        ver1[i]=0
+    done
+    for ((i=0; i<${#ver1[@]}; i++))
+    do
+        if [[ -z ${ver2[i]} ]]
+        then
+            # fill empty fields in ver2 with zeros
+            ver2[i]=0
+        fi
+        if ((10#${ver1[i]} > 10#${ver2[i]}))
+        then
+            return 1
+        fi
+        if ((10#${ver1[i]} < 10#${ver2[i]}))
+        then
+            return 2
+        fi
+    done
+    return 0
+}
+
 case "$1" in
     install)
         # install harbor to current directory
@@ -219,7 +404,7 @@ case "$1" in
         update "$@"
         ;;
 
-    new)
+    create-project | new)
         # create new environment
         shift 1
         new "$@"
